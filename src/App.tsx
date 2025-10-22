@@ -50,6 +50,7 @@ function App() {
   const [markdown, setMarkdown] = useState(DEFAULT_CONTENT)
   const [filename, setFilename] = useState('documento')
   const [isExporting, setIsExporting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const wordCount = useMemo(() => {
     const words = markdown.trim().split(/\s+/)
@@ -62,14 +63,14 @@ function App() {
 
   const handleExport = async () => {
     const safeName = filename.trim() || 'documento'
+    setErrorMessage(null)
     setIsExporting(true)
     try {
       await exportMarkdownToDocx(markdown, safeName)
     } catch (error) {
-      console.error('No se pudo exportar el documento:', error)
-      alert(
-        'Ocurrió un error al exportar el documento. Revisa la consola para más detalles.',
-      )
+      console.error('Error al exportar el documento:', error)
+      const detail = error instanceof Error ? error.message : String(error)
+      setErrorMessage(detail)
     } finally {
       setIsExporting(false)
     }
@@ -77,6 +78,21 @@ function App() {
 
   return (
     <div className="app">
+      {errorMessage ? (
+        <div className="modal" role="alertdialog" aria-modal="true">
+          <div className="modal__content">
+            <h2>Error al generar el archivo</h2>
+            <pre>{errorMessage}</pre>
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => setErrorMessage(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      ) : null}
       <header className="app__header">
         <div>
           <h1>Markdown a Word con \\(\\LaTeX\\)</h1>

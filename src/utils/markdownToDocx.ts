@@ -5,6 +5,7 @@ import {
   ExternalHyperlink,
   HeadingLevel,
   ImageRun,
+  ImportedXmlComponent,
   Packer,
   Paragraph,
   Table,
@@ -12,15 +13,18 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  type XmlComponent,
 } from 'docx'
 import { saveAs } from 'file-saver'
-import { toPng } from 'html-to-image'
+import JSZip from 'jszip'
 import katex from 'katex'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import { toString } from 'mdast-util-to-string'
+import { mml2omml } from 'mathml2omml'
+import { xml2js } from 'xml-js'
 
 interface MdNode {
   type?: string
@@ -50,6 +54,14 @@ interface InlineFormat {
 }
 
 type ImageType = 'png' | 'jpg' | 'gif' | 'bmp'
+
+interface XmlJsNode {
+  type?: 'element' | 'text'
+  name?: string
+  attributes?: Record<string, string>
+  elements?: XmlJsNode[]
+  text?: string
+}
 
 const processor = unified().use(remarkParse).use(remarkGfm).use(remarkMath)
 
@@ -155,6 +167,7 @@ export async function exportMarkdownToDocx(markdown: string, filename: string) {
   })
 
   const blob = await Packer.toBlob(doc)
+  await assertDocxIntegrity(blob)
   const finalName = filename.toLowerCase().endsWith('.docx')
     ? filename
     : `${filename}.docx`
@@ -245,8 +258,8 @@ async function convertNode(
 async function convertInline(
   nodes: MdNode[],
   format: InlineFormat = {},
-): Promise<Array<TextRun | ExternalHyperlink | ImageRun>> {
-  const runs: Array<TextRun | ExternalHyperlink | ImageRun> = []
+): Promise<Array<TextRun | ExternalHyperlink | ImageRun | XmlComponent>> {
+  const runs: Array<TextRun | ExternalHyperlink | ImageRun | XmlComponent> = []
 
   for (const node of nodes) {
     switch (node.type) {
@@ -338,9 +351,9 @@ async function convertInline(
         break
       }
       case 'inlineMath': {
-        const mathImage = await renderMath(node.value ?? '', false)
-        if (mathImage) {
-          runs.push(mathImage)
+        const math = createMathComponent(node.value ?? '', false)
+        if (math) {
+          runs.push(math)
         } else {
           runs.push(new TextRun(`$${node.value ?? ''}$`))
         }
@@ -481,12 +494,12 @@ function convertCode(node: MdNode) {
 }
 
 async function convertMathBlock(node: MdNode) {
-  const render = await renderMath(String(node.value ?? ''), true)
-  if (render) {
+  const mathComponent = createMathComponent(String(node.value ?? ''), true)
+  if (mathComponent) {
     return new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [render],
       spacing: { before: 180, after: 180 },
+      children: [mathComponent],
     })
   }
   return new Paragraph({
@@ -558,53 +571,6 @@ function resolveAlignment(alignment: string | null | undefined) {
   }
 }
 
-async function renderMath(value: string, displayMode: boolean) {
-  if (typeof document === 'undefined') return null
-  if (!value.trim()) return null
-
-  const wrapper = document.createElement(displayMode ? 'div' : 'span')
-  wrapper.style.position = 'fixed'
-  wrapper.style.left = '-10000px'
-  wrapper.style.top = '0'
-  wrapper.style.padding = displayMode ? '8px' : '4px'
-  wrapper.style.backgroundColor = '#ffffff'
-
-  document.body.appendChild(wrapper)
-
-  try {
-    katex.render(value, wrapper, {
-      throwOnError: false,
-      displayMode,
-    })
-
-    const rect = wrapper.getBoundingClientRect()
-    const width = Math.max(Math.ceil(rect.width), 1)
-    const height = Math.max(Math.ceil(rect.height), 1)
-
-    const dataUrl = await toPng(wrapper, {
-      backgroundColor: '#ffffff',
-      width,
-      height,
-      cacheBust: true,
-    })
-
-    const data = dataUrlToUint8Array(dataUrl)
-
-    return new ImageRun({
-      type: 'png',
-      data,
-      transformation: {
-        width,
-        height,
-      },
-    })
-  } catch {
-    return null
-  } finally {
-    wrapper.remove()
-  }
-}
-
 async function fetchImage(url: string | undefined): Promise<{
   data: ArrayBuffer
   transformation: { width: number; height: number }
@@ -653,17 +619,6 @@ function resolveImageType(mime: string): ImageType {
   return 'png'
 }
 
-function dataUrlToUint8Array(dataUrl: string) {
-  const [, base64] = dataUrl.split(',')
-  const binary = atob(base64)
-  const length = binary.length
-  const bytes = new Uint8Array(length)
-  for (let i = 0; i < length; i += 1) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-  return bytes
-}
-
 function resolveHeading(depth: number) {
   switch (depth) {
     case 1:
@@ -678,5 +633,109 @@ function resolveHeading(depth: number) {
       return HeadingLevel.HEADING_5
     default:
       return HeadingLevel.HEADING_6
+  }
+}
+
+const OMML_M_NAMESPACE =
+  'http://schemas.openxmlformats.org/officeDocument/2006/math'
+const OMML_W_NAMESPACE =
+  'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+function createMathComponent(value: string, displayMode: boolean): XmlComponent | null {
+  if (!value.trim()) return null
+  try {
+    const rendered = katex.renderToString(value, {
+      throwOnError: false,
+      displayMode,
+      output: 'mathml',
+    })
+
+    const start = rendered.indexOf('<math')
+    const end = rendered.lastIndexOf('</math>')
+    if (start === -1 || end === -1) return null
+
+    const mathmlFragment = rendered.slice(start, end + '</math>'.length)
+    const mathml = mathmlFragment.replace(/<annotation[^>]*>[\s\S]*?<\/annotation>/g, '')
+    const sanitizedOmml = sanitizeOmml(mml2omml(mathml))
+
+    if (!displayMode) {
+      return importOmmlComponent(sanitizedOmml)
+    }
+
+    const mathPara = `<m:oMathPara xmlns:m="${OMML_M_NAMESPACE}" xmlns:w="${OMML_W_NAMESPACE}">${sanitizedOmml}</m:oMathPara>`
+    return importOmmlComponent(mathPara)
+  } catch (error) {
+    console.error('No se pudo convertir LaTeX a OMML:', error)
+    return null
+  }
+}
+
+function sanitizeOmml(omml: string) {
+  return omml
+    .replace(/<m:sty[^>]*\bval="undefined"[^>]*\/>/g, '')
+    .replace(/<w:rPr\s*\/>/g, '')
+    .replace(/\s+\w+="undefined"/g, '')
+}
+
+function importOmmlComponent(xml: string): XmlComponent | null {
+  const parsed = xml2js(xml, { compact: false }) as { elements?: XmlJsNode[] }
+  const element = parsed.elements?.find((node) => node.type !== 'text' && node.name)
+  if (!element?.name) return null
+
+  const buildComponent = (node: XmlJsNode): ImportedXmlComponent => {
+    if (!node.name) {
+      throw new Error('Nodo OMML sin nombre durante la importación')
+    }
+
+    const component = new ImportedXmlComponent(node.name, node.attributes)
+    for (const child of node.elements ?? []) {
+      if (child.type === 'element' && child.name) {
+        component.push(buildComponent(child))
+      } else if (child.type === 'text' && typeof child.text === 'string') {
+        component.push(child.text)
+      }
+    }
+    return component
+  }
+
+  try {
+    return buildComponent(element)
+  } catch {
+    return null
+  }
+}
+
+async function assertDocxIntegrity(blob: Blob) {
+  try {
+    const buffer = await blob.arrayBuffer()
+    const zip = await JSZip.loadAsync(buffer)
+    const requiredEntries = ['[Content_Types].xml', 'word/document.xml']
+    const missing = requiredEntries.filter((entry) => !zip.file(entry))
+    if (missing.length) {
+      throw new Error(`El DOCX carece de entradas obligatorias: ${missing.join(', ')}`)
+    }
+
+    const documentXml = await zip.file('word/document.xml')?.async('string')
+    if (!documentXml) {
+      throw new Error('DOCX inválido: no se encontró word/document.xml')
+    }
+
+    const issues: string[] = []
+    if (/<undefined[\s>]/.test(documentXml)) {
+      issues.push('se detectaron nodos <undefined> (importación XML incompleta)')
+    }
+    if (/\bval="undefined"/.test(documentXml)) {
+      issues.push('hay atributos con valor "undefined" en el contenido OMML')
+    }
+
+    if (issues.length) {
+      throw new Error(`DOCX inválido: ${issues.join(' y ')}`)
+    }
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `DOCX inválido: ${error.message}`
+        : 'DOCX inválido: error desconocido al validar',
+    )
   }
 }
