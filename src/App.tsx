@@ -1,9 +1,9 @@
 import type { ChangeEvent } from 'react'
 import { useMemo, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-import rehypeKatex from 'rehype-katex'
+import { Header } from './components/Header'
+import { EditorPanel } from './components/EditorPanel'
+import { PreviewPanel } from './components/PreviewPanel'
+import { ErrorModal } from './components/ErrorModal'
 import { exportMarkdownToDocx } from './utils/markdownToDocx'
 import './App.css'
 import 'katex/dist/katex.min.css'
@@ -61,6 +61,10 @@ function App() {
     setMarkdown(event.target.value)
   }
 
+  const handleFilenameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setFilename(event.target.value)
+  }
+
   const handleExport = async () => {
     const safeName = filename.trim() || 'documento'
     setErrorMessage(null)
@@ -79,80 +83,23 @@ function App() {
   return (
     <div className="app">
       {errorMessage ? (
-        <div className="modal" role="alertdialog" aria-modal="true">
-          <div className="modal__content">
-            <h2>Error al generar el archivo</h2>
-            <pre>{errorMessage}</pre>
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => setErrorMessage(null)}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
+        <ErrorModal message={errorMessage} onClose={() => setErrorMessage(null)} />
       ) : null}
-      <header className="app__header">
-        <div>
-          <h1>Markdown a Word con \\(\\LaTeX\\)</h1>
-          <p>
-            Escribe o pega contenido Markdown con fórmulas matemáticas y
-            descárgalo como <code>.docx</code> con un solo clic.
-          </p>
-        </div>
-        <div className="app__header-controls">
-          <label className="field">
-            <span className="field__label">Nombre del archivo</span>
-            <input
-              value={filename}
-              onChange={(event) => setFilename(event.target.value)}
-              placeholder="documento"
-            />
-          </label>
-          <button
-            type="button"
-            className="button"
-            onClick={handleExport}
-            disabled={isExporting}
-          >
-            {isExporting ? 'Generando...' : 'Descargar .docx'}
-          </button>
-        </div>
-      </header>
+      <Header
+        filename={filename}
+        onFilenameChange={handleFilenameChange}
+        onExport={handleExport}
+        isExporting={isExporting}
+      />
 
       <main className="app__body">
-        <section className="panel panel--editor">
-          <div className="panel__header">
-            <h2>Editor</h2>
-            <span className="panel__meta">
-              {wordCount} palabra{wordCount === 1 ? '' : 's'}
-            </span>
-          </div>
-          <textarea
-            value={markdown}
-            onChange={handleChange}
-            spellCheck={false}
-            aria-label="Editor de Markdown"
-          />
-        </section>
+        <EditorPanel
+          markdown={markdown}
+          onChange={handleChange}
+          wordCount={wordCount}
+        />
 
-        <section className="panel panel--preview">
-          <div className="panel__header">
-            <h2>Vista previa</h2>
-          </div>
-          <div className="preview">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                a: (props) => <a {...props} target="_blank" rel="noreferrer" />,
-              }}
-            >
-              {markdown}
-            </ReactMarkdown>
-          </div>
-        </section>
+        <PreviewPanel markdown={markdown} />
       </main>
     </div>
   )
