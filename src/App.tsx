@@ -4,6 +4,7 @@ import { Header } from './components/Header'
 import { EditorPanel } from './components/EditorPanel'
 import { PreviewPanel } from './components/PreviewPanel'
 import { ErrorModal } from './components/ErrorModal'
+import { FilenameModal } from './components/FilenameModal'
 import { exportMarkdownToDocx } from './utils/markdownToDocx'
 import './App.css'
 import 'katex/dist/katex.min.css'
@@ -51,6 +52,9 @@ function App() {
   const [filename, setFilename] = useState('documento')
   const [isExporting, setIsExporting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isFilenameModalOpen, setIsFilenameModalOpen] = useState(false)
+  const [filenameDraft, setFilenameDraft] = useState('documento')
+  const [filenameError, setFilenameError] = useState<string | null>(null)
 
   const wordCount = useMemo(() => {
     const words = markdown.trim().split(/\s+/)
@@ -61,12 +65,24 @@ function App() {
     setMarkdown(event.target.value)
   }
 
-  const handleFilenameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setFilename(event.target.value)
+  const openFilenameModal = () => {
+    if (isExporting) {
+      return
+    }
+    setFilenameDraft(filename)
+    setFilenameError(null)
+    setIsFilenameModalOpen(true)
   }
 
-  const handleExport = async () => {
-    const safeName = filename.trim() || 'documento'
+  const closeFilenameModal = () => {
+    if (isExporting) {
+      return
+    }
+    setIsFilenameModalOpen(false)
+  }
+
+  const exportDocument = async (name: string) => {
+    const safeName = name.trim() || 'documento'
     setErrorMessage(null)
     setIsExporting(true)
     try {
@@ -80,15 +96,41 @@ function App() {
     }
   }
 
+  const confirmExport = async () => {
+    const trimmed = filenameDraft.trim()
+    if (!trimmed) {
+      setFilenameError('Ingresa un nombre para tu archivo.')
+      return
+    }
+
+    setFilename(trimmed)
+    setIsFilenameModalOpen(false)
+    await exportDocument(trimmed)
+  }
+
   return (
     <div className="app">
       {errorMessage ? (
         <ErrorModal message={errorMessage} onClose={() => setErrorMessage(null)} />
       ) : null}
+      {isFilenameModalOpen ? (
+        <FilenameModal
+          value={filenameDraft}
+          error={filenameError ?? undefined}
+          isSubmitting={isExporting}
+          onChange={(value) => {
+            setFilenameDraft(value)
+            if (filenameError) {
+              setFilenameError(null)
+            }
+          }}
+          onCancel={closeFilenameModal}
+          onConfirm={confirmExport}
+        />
+      ) : null}
       <Header
         filename={filename}
-        onFilenameChange={handleFilenameChange}
-        onExport={handleExport}
+        onExportRequest={openFilenameModal}
         isExporting={isExporting}
       />
 

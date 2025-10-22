@@ -1,40 +1,32 @@
-import type { ChangeEvent } from 'react'
-
 interface HeaderProps {
   filename: string
-  onFilenameChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onExport: () => void
+  onExportRequest: () => void
   isExporting: boolean
 }
 
 export function Header({
   filename,
-  onFilenameChange,
-  onExport,
+  onExportRequest,
   isExporting,
 }: HeaderProps) {
   return (
     <header className="app__header">
       <div>
-        <h1>Markdown a Word con \\(\\LaTeX\\)</h1>
+        <h1>Markdown a Word con (LaTeX)</h1>
         <p>
           Escribe o pega contenido Markdown con fórmulas matemáticas y
           descárgalo como <code>.docx</code> con un solo clic.
         </p>
       </div>
-      <div className="app__header-controls">
-        <label className="field">
-          <span className="field__label">Nombre del archivo</span>
-          <input
-            value={filename}
-            onChange={onFilenameChange}
-            placeholder="documento"
-          />
-        </label>
+      <div className="app__header-controls app__header-controls--button">
+        <div className="header-filename">
+          <span>Archivo listo para descargar:</span>
+          <strong>{filename || 'documento'}.docx</strong>
+        </div>
         <button
           type="button"
           className="button"
-          onClick={onExport}
+          onClick={onExportRequest}
           disabled={isExporting}
         >
           {isExporting ? 'Generando...' : 'Descargar .docx'}
@@ -43,4 +35,3 @@ export function Header({
     </header>
   )
 }
-

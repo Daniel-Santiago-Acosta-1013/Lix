@@ -29,40 +29,29 @@
 
 .app__header-controls {
   display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.09);
 }
 
-.field {
+.app__header-controls--button {
+  align-items: center;
+}
+
+.header-filename {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-}
-
-.field__label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  gap: 0.25rem;
   color: #475569;
+  font-size: 0.9rem;
 }
 
-.field input {
-  width: 14rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 0.6rem;
-  border: 1px solid #cbd5f5;
-  background: #f8fafc;
-  font: inherit;
-  color: inherit;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.field input:focus {
-  outline: none;
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
-  background: #fff;
+.header-filename strong {
+  font-size: 1.05rem;
+  color: #1e293b;
 }
 
 .button {
@@ -275,6 +264,8 @@
   justify-content: center;
   padding: 2rem;
   z-index: 1000;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .modal__content {
@@ -308,6 +299,70 @@
   white-space: pre-wrap;
 }
 
+.modal__content--form {
+  gap: 1.5rem;
+  max-width: 28rem;
+  text-align: left;
+}
+
+.modal__content--form h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.45rem;
+}
+
+.modal__description {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-field__label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+.modal-field input {
+  border: 1.5px solid #c7d2fe;
+  border-radius: 0.9rem;
+  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.modal-field input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.modal-field input[aria-invalid='true'] {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.modal-field__error {
+  color: #dc2626;
+  font-size: 0.82rem;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 @media (max-width: 1024px) {
   .app__body {
     grid-template-columns: 1fr;
@@ -320,15 +375,11 @@
 
   .app__header-controls {
     width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .field {
-    flex: 1;
-  }
-
-  .field input {
-    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1.25rem 1.35rem;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
   }
 
   .panel--editor,
