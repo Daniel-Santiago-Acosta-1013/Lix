@@ -1,13 +1,20 @@
+import { useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import { preprocessMarkdown } from '../utils/preprocessMarkdown'
 
 interface PreviewPanelProps {
   markdown: string
 }
 
 export function PreviewPanel({ markdown }: PreviewPanelProps) {
+  const processedMarkdown = useMemo(
+    () => preprocessMarkdown(markdown),
+    [markdown],
+  )
+
   return (
     <section className="panel panel--preview">
       <div className="panel__header">
@@ -21,10 +28,9 @@ export function PreviewPanel({ markdown }: PreviewPanelProps) {
             a: (props) => <a {...props} target="_blank" rel="noreferrer" />,
           }}
         >
-          {markdown}
+          {processedMarkdown}
         </ReactMarkdown>
       </div>
     </section>
   )
 }
-
