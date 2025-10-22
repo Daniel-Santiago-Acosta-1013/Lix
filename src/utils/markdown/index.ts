@@ -33,14 +33,10 @@ export async function exportMarkdownToDocx(markdown: string, filename: string) {
           run: {
             font: 'Fira Code',
             size: 22,
-            color: 'E2E8F0',
+            color: '1F2937',
           },
           paragraph: {
             spacing: { before: 120, after: 120 },
-            shading: { fill: '0F172A' },
-            border: {
-              left: { color: '6366F1', size: 12, style: BorderStyle.SINGLE },
-            },
             indent: { left: 360 },
           },
         },
