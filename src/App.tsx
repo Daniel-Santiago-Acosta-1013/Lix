@@ -14,7 +14,7 @@ Este editor acepta **Markdown** con soporte completo para \\(\\LaTeX\\). Puedes 
 
 ## Listas con tareas
 
-- [x] Escribir ecuaciones en línea como \\(e^{i\\pi} + 1 = 0\\)
+- [x] Escribir ecuaciones en línea como $e^{i\\pi} + 1 = 0$
 - [ ] Mostrar bloques matemáticos completos
 
 ### Bloque matemático
@@ -30,8 +30,8 @@ $$
 
 | Variable | Descripción |
 | -------- | ----------- |
-| \\(\\alpha\\) | Coeficiente principal |
-| \\(\\beta\\) | Término de ajuste |
+| $\\alpha$ | Coeficiente principal |
+| $\\beta$ | Término de ajuste |
 
 ### Código
 
