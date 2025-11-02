@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Header } from './components/Header'
 import { EditorPanel } from './components/EditorPanel'
 import { PreviewPanel } from './components/PreviewPanel'
@@ -47,6 +47,26 @@ function suma(a: number, b: number) {
 > "La imaginación es más importante que el conocimiento." — Albert Einstein
 `
 
+type Theme = 'light' | 'dark'
+
+const THEME_STORAGE_KEY = 'lix-theme'
+
+const getInitialTheme = (): Theme => {
+  if (typeof window === 'undefined') {
+    return 'dark'
+  }
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  const resolvedTheme: Theme = storedTheme === 'light' ? 'light' : 'dark'
+
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.theme = resolvedTheme
+    document.documentElement.style.colorScheme = resolvedTheme
+  }
+
+  return resolvedTheme
+}
+
 function App() {
   const [markdown, setMarkdown] = useState(DEFAULT_CONTENT)
   const [filename, setFilename] = useState('documento')
@@ -55,6 +75,18 @@ function App() {
   const [isFilenameModalOpen, setIsFilenameModalOpen] = useState(false)
   const [filenameDraft, setFilenameDraft] = useState('documento')
   const [filenameError, setFilenameError] = useState<string | null>(null)
+  const [theme, setTheme] = useState<Theme>(() => getInitialTheme())
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.theme = theme
+      document.documentElement.style.colorScheme = theme
+    }
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+    }
+  }, [theme])
 
   const wordCount = useMemo(() => {
     const words = markdown.trim().split(/\s+/)
@@ -108,6 +140,10 @@ function App() {
     await exportDocument(trimmed)
   }
 
+  const toggleTheme = () => {
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+  }
+
   return (
     <div className="app">
       {errorMessage ? (
@@ -132,6 +168,8 @@ function App() {
         filename={filename}
         onExportRequest={openFilenameModal}
         isExporting={isExporting}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <main className="app__body">
