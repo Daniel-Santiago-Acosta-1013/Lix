@@ -47,6 +47,12 @@
   flex-shrink: 0;
 }
 
+.header-export-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
 .app__header-controls {
   display: flex;
   align-items: center;
@@ -118,6 +124,24 @@
   background: var(--button-secondary-hover);
   box-shadow: none;
   transform: translateY(-1px);
+}
+
+.button--ghost {
+  background: var(--bg-surface-alt);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: var(--bg-muted);
+  transform: translateY(-1px);
+}
+
+.button__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
 }
 
 .app__body {
@@ -446,5 +470,14 @@
 @media (max-width: 640px) {
   .app__theme-toggle {
     align-self: stretch;
+  }
+
+  .header-export-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-export-buttons .button {
+    width: 100%;
   }
 }

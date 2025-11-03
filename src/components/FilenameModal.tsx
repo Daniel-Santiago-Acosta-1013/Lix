@@ -37,6 +37,8 @@ export function FilenameModal({
     }
   }
 
+  const extension = '.docx'
+
   return (
     <div
       className="modal modal--blur"
@@ -48,7 +50,7 @@ export function FilenameModal({
         <div>
           <h2>Guardar documento</h2>
           <p className="modal__description">
-            Escribe el nombre que tendrá el archivo <code>.docx</code>.
+            Escribe el nombre que tendrá el archivo <code>{extension}</code>.
           </p>
         </div>
 

@@ -23,6 +23,7 @@ export interface InlineFormat {
   code?: boolean
   color?: string
   underline?: boolean
+  math?: boolean
 }
 
 export type ImageType = 'png' | 'jpg' | 'gif' | 'bmp'
@@ -34,4 +35,3 @@ export interface XmlJsNode {
   elements?: XmlJsNode[]
   text?: string
 }
-

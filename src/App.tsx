@@ -48,7 +48,6 @@ function suma(a: number, b: number) {
 `
 
 type Theme = 'light' | 'dark'
-
 const THEME_STORAGE_KEY = 'lix-theme'
 
 const getInitialTheme = (): Theme => {

@@ -6,6 +6,34 @@ interface HeaderProps {
   onToggleTheme: () => void
 }
 
+function DocxIcon() {
+  return (
+    <svg className="button__icon" viewBox="0 0 24 24" role="presentation" aria-hidden="true">
+      <path
+        d="M7 3h8l4 4v14H7z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 3v18H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 11 12 15l2-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function ThemeIcon({ theme }: { theme: 'light' | 'dark' }) {
   if (theme === 'dark') {
     return (
@@ -60,8 +88,8 @@ export function Header({
       <div>
         <h1>Markdown a Word con (LaTeX)</h1>
         <p>
-          Escribe o pega contenido Markdown con fórmulas matemáticas y
-          descárgalo como <code>.docx</code> con un solo clic.
+          Escribe o pega contenido Markdown con fórmulas matemáticas y descárgalo como{' '}
+          <code>.docx</code> con un solo clic.
         </p>
       </div>
       <div className="app__header-actions">
@@ -79,14 +107,12 @@ export function Header({
             <span>Archivo listo para descargar:</span>
             <strong>{filename || 'documento'}.docx</strong>
           </div>
-          <button
-            type="button"
-            className="button"
-            onClick={onExportRequest}
-            disabled={isExporting}
-          >
-            {isExporting ? 'Generando...' : 'Descargar .docx'}
-          </button>
+          <div className="header-export-buttons">
+            <button type="button" className="button" onClick={onExportRequest} disabled={isExporting}>
+              <DocxIcon />
+              {isExporting ? 'Generando...' : 'Descargar .docx'}
+            </button>
+          </div>
         </div>
       </div>
     </header>
