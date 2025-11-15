@@ -4,9 +4,11 @@ import { processor, BASE_CONTEXT } from './processor'
 import { assertDocxIntegrity } from './validation'
 import type { MdNode } from './types'
 import { convertNodes } from './conversion'
+import { preprocessMarkdown } from '../preprocessMarkdown'
 
 export async function exportMarkdownToDocx(markdown: string, filename: string) {
-  const parsed = (await processor.run(processor.parse(markdown))) as MdNode
+  const cleanedMarkdown = preprocessMarkdown(markdown)
+  const parsed = (await processor.run(processor.parse(cleanedMarkdown))) as MdNode
   const children = await convertNodes(parsed.children ?? [], BASE_CONTEXT)
 
   const doc = new Document({

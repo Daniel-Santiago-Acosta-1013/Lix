@@ -138,7 +138,8 @@ export function preprocessMarkdown(markdown: string): string {
   const normalized = markdown.replace(/\r\n/g, '\n');
   const withBlocks = convertBracketBlocks(normalized);
   const withInlineBlocks = convertStandaloneBracketLines(withBlocks);
-  return wrapBareLatexCommands(withInlineBlocks);
+  const normalizedParentheses = normalizeParentheticalMath(withInlineBlocks);
+  return wrapBareLatexCommands(normalizedParentheses);
 }
 
 function wrapBareLatexCommands(markdown: string): string {
@@ -234,4 +235,111 @@ function isValidBoundary(previous: string, next: string): boolean {
   const beforeOk = !previous || !/[A-Za-z0-9]/.test(previous);
   const afterOk = !next || !/[A-Za-z0-9]/.test(next);
   return beforeOk && afterOk;
+}
+
+function normalizeParentheticalMath(markdown: string): string {
+  const lines = markdown.split('\n');
+  const output: string[] = [];
+
+  let activeFence: string | null = null;
+  let insideBlockMath = false;
+
+  for (const line of lines) {
+    if (activeFence) {
+      output.push(line);
+      if (line.trimStart().startsWith(activeFence)) {
+        activeFence = null;
+      }
+      continue;
+    }
+
+    const fenceMatch = line.match(CODE_FENCE_PATTERN);
+    if (fenceMatch) {
+      activeFence = fenceMatch[2];
+      output.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (!insideBlockMath && (trimmed === '$$' || trimmed === '\\[')) {
+      insideBlockMath = true;
+      output.push(line);
+      continue;
+    }
+
+    if (insideBlockMath) {
+      output.push(line);
+      if (trimmed === '$$' || trimmed === '\\]') {
+        insideBlockMath = false;
+      }
+      continue;
+    }
+
+    const withoutLatexParens = replaceLatexParentheses(line);
+    output.push(collapseVectorParentheses(withoutLatexParens));
+  }
+
+  return output.join('\n');
+}
+
+function replaceLatexParentheses(line: string): string {
+  let result = '';
+  let index = 0;
+
+  while (index < line.length) {
+    const char = line[index];
+
+    if (char === '(' && isBoundaryCharacter(line[index - 1])) {
+      const closeIndex = findMatchingParen(line, index);
+      if (
+        closeIndex !== -1 &&
+        isBoundaryCharacter(line[closeIndex + 1]) &&
+        containsLatexCommand(line.slice(index + 1, closeIndex))
+      ) {
+        const inner = line.slice(index + 1, closeIndex).trim();
+        result += inner ? `$${inner}$` : '';
+        index = closeIndex + 1;
+        continue;
+      }
+    }
+
+    result += char;
+    index += 1;
+  }
+
+  return result;
+}
+
+function findMatchingParen(text: string, start: number): number {
+  let depth = 0;
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+    if (char === '(') {
+      depth += 1;
+    } else if (char === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        return i;
+      }
+      if (depth < 0) {
+        return -1;
+      }
+    }
+  }
+  return -1;
+}
+
+function containsLatexCommand(content: string): boolean {
+  return LATEX_COMMAND.test(content);
+}
+
+function isBoundaryCharacter(char: string | undefined): boolean {
+  if (!char) {
+    return true;
+  }
+  return /\s|[.,;:!?]/.test(char);
+}
+
+function collapseVectorParentheses(line: string): string {
+  return line.replace(/\(\(\s*(-?\d+(?:\s*,\s*-?\d+)+)\s*\)\)/g, '($1)');
 }
