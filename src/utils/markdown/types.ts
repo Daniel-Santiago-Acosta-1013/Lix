@@ -1,3 +1,5 @@
+import type { XmlNode } from '../../types/xml'
+
 export interface MdNode {
   type?: string
   children?: MdNode[]
@@ -28,10 +30,4 @@ export interface InlineFormat {
 
 export type ImageType = 'png' | 'jpg' | 'gif' | 'bmp'
 
-export interface XmlJsNode {
-  type?: 'element' | 'text'
-  name?: string
-  attributes?: Record<string, string>
-  elements?: XmlJsNode[]
-  text?: string
-}
+export type XmlJsNode = XmlNode

@@ -1,4 +1,7 @@
 const LATEX_COMMAND = /\\[a-zA-Z]+/;
+const INLINE_LATEX_COMMAND =
+  /\\[a-zA-Z]+(?:\s*\{[^{}]*\})*(?:\s*(?:[_^])(?:\{[^{}]*\}|[^\s{}]))*/g;
+const CODE_FENCE_PATTERN = /^(\s*)(`{3,}|~{3,})/;
 
 function convertBracketBlocks(markdown: string): string {
   const lines = markdown.split('\n');
@@ -134,5 +137,101 @@ function isInlineLatexCandidate(content: string): boolean {
 export function preprocessMarkdown(markdown: string): string {
   const normalized = markdown.replace(/\r\n/g, '\n');
   const withBlocks = convertBracketBlocks(normalized);
-  return convertStandaloneBracketLines(withBlocks);
+  const withInlineBlocks = convertStandaloneBracketLines(withBlocks);
+  return wrapBareLatexCommands(withInlineBlocks);
+}
+
+function wrapBareLatexCommands(markdown: string): string {
+  const lines = markdown.split('\n');
+  const output: string[] = [];
+
+  let activeFence: string | null = null;
+  let insideBlockMath = false;
+
+  for (const line of lines) {
+    if (activeFence) {
+      output.push(line);
+      if (line.trimStart().startsWith(activeFence)) {
+        activeFence = null;
+      }
+      continue;
+    }
+
+    const fenceMatch = line.match(CODE_FENCE_PATTERN);
+    if (fenceMatch) {
+      activeFence = fenceMatch[2];
+      output.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (!insideBlockMath && (trimmed === '$$' || trimmed === '\\[')) {
+      insideBlockMath = true;
+      output.push(line);
+      continue;
+    }
+
+    if (insideBlockMath) {
+      output.push(line);
+      if (trimmed === '$$' || trimmed === '\\]') {
+        insideBlockMath = false;
+      }
+      continue;
+    }
+
+    if (!line.includes('\\')) {
+      output.push(line);
+      continue;
+    }
+
+    output.push(wrapLatexInLine(line));
+  }
+
+  return output.join('\n');
+}
+
+function wrapLatexInLine(line: string): string {
+  const placeholders: string[] = [];
+  const placeholderPrefix = '__LATEX_PLACEHOLDER__';
+  const placeholder = (index: number) => `${placeholderPrefix}${index}__`;
+
+  const protectSegment = (pattern: RegExp) => {
+    line = line.replace(pattern, (match) => {
+      const token = placeholder(placeholders.length);
+      placeholders.push(match);
+      return token;
+    });
+  };
+
+  const protectedPatterns = [
+    /\\\([\s\S]*?\\\)/g,
+    /\\\[[\s\S]*?\\\]/g,
+    /\$\$[\s\S]*?\$\$/g,
+    /\$[\s\S]*?\$/g,
+    /`[^`]*`/g,
+  ];
+
+  for (const pattern of protectedPatterns) {
+    protectSegment(pattern);
+  }
+
+  const transformed = line.replace(INLINE_LATEX_COMMAND, (match, offset, full) => {
+    const prevChar = offset > 0 ? full[offset - 1] : '';
+    const nextChar = full[offset + match.length] ?? '';
+
+    if (!isValidBoundary(prevChar, nextChar)) {
+      return match;
+    }
+
+    return `$${match}$`;
+  });
+
+  const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)__`, 'g');
+  return transformed.replace(placeholderRegex, (_, index: string) => placeholders[Number(index)]);
+}
+
+function isValidBoundary(previous: string, next: string): boolean {
+  const beforeOk = !previous || !/[A-Za-z0-9]/.test(previous);
+  const afterOk = !next || !/[A-Za-z0-9]/.test(next);
+  return beforeOk && afterOk;
 }

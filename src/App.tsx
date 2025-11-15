@@ -6,6 +6,7 @@ import { PreviewPanel } from './components/PreviewPanel'
 import { ErrorModal } from './components/ErrorModal'
 import { FilenameModal } from './components/FilenameModal'
 import { exportMarkdownToDocx } from './utils/markdownToDocx'
+import { importDocxToMarkdown } from './utils/docxToMarkdown'
 import './App.css'
 import 'katex/dist/katex.min.css'
 
@@ -70,11 +71,13 @@ function App() {
   const [markdown, setMarkdown] = useState(DEFAULT_CONTENT)
   const [filename, setFilename] = useState('documento')
   const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isFilenameModalOpen, setIsFilenameModalOpen] = useState(false)
   const [filenameDraft, setFilenameDraft] = useState('documento')
   const [filenameError, setFilenameError] = useState<string | null>(null)
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme())
+  const isBusy = isExporting || isImporting
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -97,7 +100,7 @@ function App() {
   }
 
   const openFilenameModal = () => {
-    if (isExporting) {
+    if (isBusy) {
       return
     }
     setFilenameDraft(filename)
@@ -106,7 +109,7 @@ function App() {
   }
 
   const closeFilenameModal = () => {
-    if (isExporting) {
+    if (isBusy) {
       return
     }
     setIsFilenameModalOpen(false)
@@ -143,6 +146,25 @@ function App() {
     setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
   }
 
+  const handleDocxImport = async (file: File) => {
+    setErrorMessage(null)
+    setIsImporting(true)
+    try {
+      const imported = await importDocxToMarkdown(file)
+      const cleaned = imported ?? ''
+      setMarkdown(cleaned)
+      const safeName = file.name.replace(/\.docx$/i, '') || 'documento'
+      setFilename(safeName)
+      setFilenameDraft(safeName)
+    } catch (error) {
+      console.error('Error al importar el documento:', error)
+      const detail = error instanceof Error ? error.message : String(error)
+      setErrorMessage(detail)
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   return (
     <div className="app">
       {errorMessage ? (
@@ -167,6 +189,8 @@ function App() {
         filename={filename}
         onExportRequest={openFilenameModal}
         isExporting={isExporting}
+        isImporting={isImporting}
+        onImport={handleDocxImport}
         theme={theme}
         onToggleTheme={toggleTheme}
       />

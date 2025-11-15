@@ -1,7 +1,12 @@
+import { useRef } from 'react'
+import type { ChangeEvent } from 'react'
+
 interface HeaderProps {
   filename: string
   onExportRequest: () => void
   isExporting: boolean
+  isImporting: boolean
+  onImport: (file: File) => void | Promise<void>
   theme: 'light' | 'dark'
   onToggleTheme: () => void
 }
@@ -74,22 +79,69 @@ function ThemeIcon({ theme }: { theme: 'light' | 'dark' }) {
   )
 }
 
+function UploadIcon() {
+  return (
+    <svg className="button__icon" viewBox="0 0 24 24" role="presentation" aria-hidden="true">
+      <path
+        d="M12 5v11"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="m8 9 4-4 4 4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M6 19h12"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  )
+}
+
 export function Header({
   filename,
   onExportRequest,
   isExporting,
+  isImporting,
+  onImport,
   theme,
   onToggleTheme,
 }: HeaderProps) {
   const themeLabel = theme === 'dark' ? 'Modo claro' : 'Modo oscuro'
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const handleImportClick = () => {
+    if (isExporting || isImporting) {
+      return
+    }
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      void onImport(file)
+    }
+    event.target.value = ''
+  }
 
   return (
     <header className="app__header">
       <div>
         <h1>Markdown a Word con (LaTeX)</h1>
         <p>
-          Escribe o pega contenido Markdown con fórmulas matemáticas y descárgalo como{' '}
-          <code>.docx</code> con un solo clic.
+          Escribe o pega contenido Markdown con fórmulas matemáticas, importa tus{' '}
+          documentos <code>.docx</code> existentes y descárgalos nuevamente como Word.
         </p>
       </div>
       <div className="app__header-actions">
@@ -108,6 +160,22 @@ export function Header({
             <strong>{filename || 'documento'}.docx</strong>
           </div>
           <div className="header-export-buttons">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={handleImportClick}
+              disabled={isImporting || isExporting}
+            >
+              <UploadIcon />
+              {isImporting ? 'Cargando...' : 'Importar .docx'}
+            </button>
             <button type="button" className="button" onClick={onExportRequest} disabled={isExporting}>
               <DocxIcon />
               {isExporting ? 'Generando...' : 'Descargar .docx'}
